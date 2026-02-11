@@ -113,6 +113,12 @@ optional:
     when: "review|avaliação|reputação"
 ```
 
+**Misto/Dict sem when** (comporta-se como Simples):
+```yaml
+optional:
+  - path: ~/gdrive/.../pill.md
+```
+
 O `when` é um regex case-insensitive aplicado à task string.
 
 ### Tipos de Nodo

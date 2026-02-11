@@ -215,6 +215,13 @@ def load_graph() -> dict:
         return json.load(f)
 
 
+def resolve_optional_path(optional_dep) -> str:
+    """Resolve the path from an optional dependency (str or dict)."""
+    if isinstance(optional_dep, dict):
+        return optional_dep.get("path", "")
+    return str(optional_dep)
+
+
 def resolve_node_id(graph: dict, ref: str) -> Optional[str]:
     """Resolve a reference to a node ID."""
     # Direct ID match
@@ -234,7 +241,7 @@ def resolve_node_id(graph: dict, ref: str) -> Optional[str]:
     return None
 
 
-def resolve_dependencies(graph: dict, entry_id: str, include_optional: bool = False) -> list[str]:
+def resolve_dependencies(graph: dict, entry_id: str, include_optional: bool = False, task: str = "") -> list[str]:
     """
     BFS traversal to collect all dependencies.
     Returns list of node IDs in dependency order (dependencies first).
@@ -270,7 +277,16 @@ def resolve_dependencies(graph: dict, entry_id: str, include_optional: bool = Fa
         
         if include_optional:
             for opt in node.get("optional", []):
-                opt_id = resolve_node_id(graph, opt)
+                # Extract path and condition
+                opt_path = resolve_optional_path(opt)
+
+                # Check condition if task is provided
+                if task and isinstance(opt, dict):
+                    pattern = opt.get("when", "")
+                    if pattern and not matches_task(pattern, task):
+                        continue
+
+                opt_id = resolve_node_id(graph, opt_path)
                 if opt_id and opt_id not in visited:
                     queue.append(opt_id)
         
@@ -481,11 +497,22 @@ def show_graph_structure(graph: dict, entry_id: str):
         node_type = node.get("type", "?")
         path = node.get("path", "?")
         requires = node.get("requires", [])
+        optional = node.get("optional", [])
         
         print(f"[{node_type}] {node_id}")
         print(f"    path: {path}")
         if requires:
             print(f"    requires: {', '.join(str(r) for r in requires)}")
+        if optional:
+            print("    optional:")
+            for opt in optional:
+                if isinstance(opt, dict):
+                    p = opt.get("path", "")
+                    w = opt.get("when", "")
+                    suffix = f" (when: {w})" if w else ""
+                    print(f"      - {p}{suffix}")
+                else:
+                    print(f"      - {opt}")
         print()
 
 
